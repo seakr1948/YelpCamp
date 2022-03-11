@@ -1,0 +1,48 @@
+<% layout('layouts/boilerplate.ejs') %>
+    <div id="cluster-map"></div>
+    <div class="m-3">
+        <h1>All Campgrounds</h1>
+    </div>
+
+    <div class="m-3">
+        <a class="text-primary text-decoration-none rounded p-1" href="/campgrounds/new">Create a new Campground</a>
+    </div>
+
+    <ul>
+        <% for( let campground of campgrounds) {%>
+             
+            <div class="card mb-3 rounded" style="overflow: hidden; max-height: 300px;">
+                <div class="row">
+                    <div class="col-4">
+                        <img class="img-fluid" src= <%= campground.images.length > 0 ? campground.images[0].url : '/images/default-camp.avif' %>   alt="..." style="object-fit: cover;
+                        min-height: 300px;">
+                    </div>
+                    <div class="col-8">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <%= campground.title %>
+                            </h5>
+                            <p>
+                                <%= campground.description %>
+                            </p>
+                            <p class="text-muted">
+                                <%= campground.location %>
+                            </p>
+                            <a href="/campgrounds/<%= campground.id %> " class="btn btn-primary">View <%=
+                                    campground.title %> </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <% } %>
+    </ul>
+
+    <script>
+        const mapToken = '<%- process.env.MAPBOX_ACCESS_KEY %>'
+        const campgrounds = <%- JSON.stringify({features: campgrounds})%>
+    </script>
+    
+    <script src="/js/clusterMap.js">
+        
+    </script>
+    

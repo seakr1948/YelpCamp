@@ -1,0 +1,331 @@
+from tkinter import *
+from tkinter import ttk
+import tkinter as tk
+import sqlite3
+
+root = tk.Tk()
+root.title('CECS 445 Inventory Manager Test')
+root.geometry("900x700")
+conn = sqlite3.connect('invetory.db')  # create a DB if there is not one
+
+# create a cursor named c
+c = conn.cursor()
+# **only five DATATYPE we can choose from: NULL, INTEGER, REAL(decimal), TEXT, BLOB(as is, image\mp3 etc) **
+
+c.execute("DROP TABLE if EXISTS products")
+c.execute("""CREATE TABLE products (
+        product_name text,
+        product_id text,
+        catalog text,
+        quantity integer,
+        price real,
+        stock_date text    
+    )""")
+
+# Product list:
+p_list = [
+            ('GV Sweet Corn', 'P001', 'Cans', 3, 0.50, '2021/2/21'),
+            ('Kog Strawberry Cereal', 'P002', 'Breakfast Food', 10, 3.72, '2021/2/22'),
+            ('Lac Reduced Fat Milk', 'P003', 'Breakfast Food', 5, 2.24, '2021/2/22'),
+            ('Dove Chocolate Candy', 'P004', 'Snack', 0, 3.98, '2021/2/22')
+          ]
+# Insert data into DB
+# c.execute("INSERT INTO products VALUES('GV Sweet Corn', 'P001', 'Cans', 3, 0.50, '2021/2/21')")
+c.executemany("INSERT INTO products VALUES(?,?,?,?,?,?)", p_list)
+
+
+# Query the DB
+c.execute("SELECT  * FROM products")
+
+
+items = c.fetchall()
+
+
+
+# Selected drop down
+
+def selected(event):
+    return
+    # selectLabel = Label(root, text=clicked.get()).pack()
+
+
+option_frame = Frame(root)
+option_frame.grid(row=1, column=0, padx=20, pady=(10, 0))
+
+pid_list = []
+for i in items:
+    pid_list.append(i[1])
+    # Combo drop down
+global myCombo
+myCombo = ttk.Combobox(option_frame, value=pid_list)
+myCombo.current(0)
+myCombo.bind("<<ComboboxSelected>>")
+myCombo.grid(row=10, column=1, pady=5, padx=10)
+'''
+# print(pid_list)
+clicked = StringVar()
+clicked.set(pid_list[0])
+drop = OptionMenu(root, clicked, *pid_list)
+drop.grid(row=9, column=2, pady=5, padx=10)
+'''
+
+
+def getDropDown():
+    conn = sqlite3.connect('invetory.db')
+    c = conn.cursor()
+    c.execute("SELECT * FROM products")
+    items = c.fetchall()
+    pid_list = []
+    for i in items:
+        pid_list.append(i[1])
+    # Combo drop down
+    myCombo = ttk.Combobox(option_frame, value=pid_list)
+    myCombo.current(0)
+    myCombo.bind("<<ComboboxSelected>>")
+    myCombo.grid(row=10, column=1, pady=5, padx=10)
+    # print(myCombo.get())
+    conn.commit()
+    conn.close()
+
+
+# Create submit function for DB
+def submit():
+    conn = sqlite3.connect('invetory.db')
+    c = conn.cursor()
+    c.execute("INSERT INTO products VALUES (:name, :id,:catalog,:num, :price, :date )",
+              {
+                  'name': product_name.get(),
+                  'id': product_id.get(),
+                  'catalog': catalog.get(),
+                  'num': quantity.get(),
+                  'price': price.get(),
+                  'date': stock_date.get()
+              })
+    conn.commit()
+    conn.close()
+    # Clear the text box
+    product_name.delete(0, END)
+    product_id.delete(0, END)
+    catalog.delete(0, END)
+    quantity.delete(0, END)
+    price.delete(0, END)
+    stock_date.delete(0, END)
+    query()
+    getDropDown()
+
+
+# Create query function for DB
+def query():
+    conn = sqlite3.connect('invetory.db')
+    c = conn.cursor()
+    # Query DB
+    c.execute("SELECT *, oid FROM products")
+    records = c.fetchall()
+    # Loop thru results
+
+    for row in tree.get_children():
+        tree.delete(row)
+    for row in records:
+        # print(row)
+        tree.insert("", tk.END, values=row)
+    conn.commit()
+    conn.close()
+
+
+# Delete item from DB
+def delete():
+    conn = sqlite3.connect('invetory.db')
+    c = conn.cursor()
+    # Delete Records
+
+    c.execute("DELETE from products WHERE product_id = '" + myCombo.get() + "' ")
+    print("Delete of product ID: " + myCombo.get() + " Done")
+    conn.commit()
+    conn.close()
+    d_confirm_window.destroy()
+    query()
+    getDropDown()
+
+
+# Update data into DB
+def update():
+    conn = sqlite3.connect('invetory.db')
+    c = conn.cursor()
+    record_id = myCombo.get()
+    c.execute("""UPDATE products SET
+        product_name = :name,
+        catalog = :catalog,
+        quantity = :num,
+        price = :price,
+        stock_date = :date
+
+        WHERE product_id = :id""",
+              {
+                  'name': product_name_editor.get(),
+                  'catalog': catalog_editor.get(),
+                  'num': quantity_editor.get(),
+                  'price': price_editor.get(),
+                  'date': stock_date_editor.get(),
+
+                  'id': record_id
+              })
+    query()
+    conn.commit()
+    conn.close()
+    editor.destroy()
+
+
+# Edit DB item in new Window
+def edit():
+    global editor
+    editor = Tk()
+    editor.title('Update Inventory')
+    editor.geometry("400x300")
+    conn = sqlite3.connect('invetory.db')
+    c = conn.cursor()
+    selected_id = myCombo.get()
+    # print(selected_id)
+    c.execute("SELECT * FROM products WHERE product_id = '" + selected_id + "' ")
+    records = c.fetchall()
+
+    # Create global variables for text box names
+    global product_name_editor
+    global product_id_editor
+    global catalog_editor
+    global quantity_editor
+    global price_editor
+    global stock_date_editor
+
+    # Create text boxes
+    product_name_editor = Entry(editor, width=30)
+    product_name_editor.grid(row=0, column=1, padx=20, pady=(10, 0))
+    # product_id_editor = Entry(editor, width=30)
+    # product_id_editor.grid(row=1, column=1)
+    catalog_editor = Entry(editor, width=30)
+    catalog_editor.grid(row=2, column=1)
+    quantity_editor = Entry(editor, width=30)
+    quantity_editor.grid(row=3, column=1)
+    price_editor = Entry(editor, width=30)
+    price_editor.grid(row=4, column=1)
+    stock_date_editor = Entry(editor, width=30)
+    stock_date_editor.grid(row=5, column=1)
+    # Create text box labels
+    product_name_label = Label(editor, text="Product Name")
+    product_name_label.grid(row=0, column=0, pady=(10, 0))
+    # product_id_label = Label(editor, text="Product ID")
+    # product_id_label.grid(row=1, column=0)
+    catalog_label = Label(editor, text="Catalog")
+    catalog_label.grid(row=2, column=0)
+    quantity_label = Label(editor, text="Quantity in Stock")
+    quantity_label.grid(row=3, column=0)
+    price_label = Label(editor, text="Price")
+    price_label.grid(row=4, column=0)
+    stock_date_label = Label(editor, text="Stock Date")
+    stock_date_label.grid(row=5, column=0)
+
+    save_btn = Button(editor, text="Save", command=update)
+    save_btn.grid(row=6, column=0, columnspan=2, pady=10, padx=1, ipadx=100)
+
+    for i in records:
+        product_name_editor.insert(0, i[0])
+        # product_id_editor.insert(0, i[1])
+        catalog_editor.insert(0, i[2])
+        quantity_editor.insert(0, i[3])
+        price_editor.insert(0, i[4])
+        stock_date_editor.insert(0, i[5])
+
+    conn.commit()
+    conn.close()
+
+
+# Asking for confirm if they want to delete data
+def deleteConfirm():
+    global d_confirm_window
+    d_confirm_window = tk.Tk()
+    d_confirm_window.title('Deletion Confirm')
+    d_confirm_window.geometry("400x150")
+    confirm_message = Label(d_confirm_window, text=" Are you sure you want to delete product \""
+                                                   + myCombo.get() + "\" from database?", padx=10, pady=10)
+    confirm_message.grid(row=0, column=0, pady=10)
+    yesNoBox = Frame(d_confirm_window)
+    yesNoBox.grid(row=1, column=0, padx=20, pady=(10, 0))
+    delete_yes_btn = Button(yesNoBox, text="Yes", command=delete)
+    delete_yes_btn.grid(row=0, column=0, columnspan=2, pady=5, padx=1, ipadx=50)
+    delete_no_btn = Button(yesNoBox, text="No", command=d_confirm_window.destroy)
+    delete_no_btn.grid(row=0, column=2, columnspan=2, pady=5, padx=1, ipadx=50)
+
+
+# Create text boxes
+product_name = Entry(option_frame, width=30)
+product_name.grid(row=1, column=1, padx=20, pady=(10, 0))
+product_id = Entry(option_frame, width=30)
+product_id.grid(row=2, column=1)
+catalog = Entry(option_frame, width=30)
+catalog.grid(row=3, column=1)
+quantity = Entry(option_frame, width=30)
+quantity.grid(row=4, column=1)
+price = Entry(option_frame, width=30)
+price.grid(row=5, column=1)
+stock_date = Entry(option_frame, width=30)
+stock_date.grid(row=6, column=1)
+# delete_box = Entry(root, width=30)
+# delete_box.grid(row=9, column=1, pady=5)
+
+
+# Create text box labels
+product_name_label = Label(option_frame, text="Product Name")
+product_name_label.grid(row=1, column=0, pady=(10, 0))
+product_id_label = Label(option_frame, text="Product ID")
+product_id_label.grid(row=2, column=0)
+catalog_label = Label(option_frame, text="Catalog")
+catalog_label.grid(row=3, column=0)
+quantity_label = Label(option_frame, text="Quantity in Stock")
+quantity_label.grid(row=4, column=0)
+price_label = Label(option_frame, text="Price")
+price_label.grid(row=5, column=0)
+stock_date_label = Label(option_frame, text="Stock Date")
+stock_date_label.grid(row=6, column=0)
+delete_box_label = Label(option_frame, text="Select Product ID")
+delete_box_label.grid(row=10, column=0, pady=5, padx=30)
+
+# Create submit button
+submit_btn = Button(option_frame, text="Add Inventory Item", command=submit)
+submit_btn.grid(row=7, column=0, columnspan=2, pady=10, padx=1, ipadx=100)
+
+# Create query button
+query_btn = tk.Button(option_frame, text="Show Inventory", command=query)
+query_btn.grid(row=8, column=0, columnspan=2, pady=10, padx=1, ipadx=112)
+
+# Create delete button
+delete_btn = Button(option_frame, text="Delete Inventory Item", command=deleteConfirm)
+delete_btn.grid(row=11, column=0, columnspan=2, pady=10, padx=1, ipadx=94)
+
+# Create an edit button
+edit_btn = Button(option_frame, text="Edit Inventory Item", command=edit)
+edit_btn.grid(row=12, column=0, columnspan=2, pady=10, padx=1, ipadx=100)
+
+tree = ttk.Treeview(root, column=("c1", "c2", "c3", "c4", "c5", "c6"), show='headings')
+tree.column("#1", width=250, minwidth=150, anchor=tk.W)
+tree.heading("#1", text="Product Name")
+tree.column("#2", width=80, minwidth=80, anchor=tk.CENTER)
+tree.heading("#2", text="Product ID*")
+tree.column("#3", width=140, minwidth=100, anchor=tk.CENTER)
+tree.heading("#3", text="Catalog")
+tree.column("#4", width=140, minwidth=100, anchor=tk.CENTER)
+tree.heading("#4", text="Quantity")
+tree.column("#5", width=80, minwidth=80, anchor=tk.CENTER)
+tree.heading("#5", text="Price")
+tree.column("#6", width=100, minwidth=80, anchor=tk.CENTER)
+tree.heading("#6", text="In Stock Date")
+tree.grid(row=0, column=0, padx=50, pady=20)
+
+# Display the database at beginning
+query()
+
+# Commit our command
+conn.commit()
+
+# Close our connection
+conn.close()
+
+root.mainloop()
