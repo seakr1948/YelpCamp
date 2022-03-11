@@ -3,7 +3,7 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 // Variables
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const MILLISECONDS_TO_ONE_WEEK = (1000 * 60 * 60 * 24 * 7);
 const dbUrl = process.env.MONGO_URL || "mongodb://localhost:27017/yelp-camp";
 const secret = process.env.SECRET || "thisshouldbeasecret!!!";
